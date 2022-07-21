@@ -20,6 +20,13 @@ namespace MyNN
     };
 
     template<typename T>
+    struct SameOutput: public BaseActivation
+    {
+        T calculate(T input); 
+        T calculate_feedback(T input);
+    };
+
+    template<typename T>
     struct sigmoid: public BaseActivation
     {
         T calculate(T input); 
@@ -139,19 +146,41 @@ namespace MyNN
         T get_neuron_error(int num);
     };
 
-    // template<typename T, class activation>
-    // class LastLayer: public BaseLayer<T>
-    // {
-    //     public:
-    //     LastLayer(int num_of_neurons);
+    template<typename T, class activation>
+    class LastLayer: public BaseLayer<T>
+    {
+        public:
+        LastLayer(int num_of_neurons);
 
-    //     void backpropagate_error(BaseLayer<T> &previous_layer);
-    //     void update_weights(BaseLayer<T> &previous_layer, T learning_rate);
+        std::vector<T> get_output();
+        void backpropagate_error(BaseLayer<T> &previous_layer);
 
-    //     void add_weights_out(BaseLayer<T> &next_layer, int size_of_next_layer);
-    //     ~DenseLayer() = default;
-    // };
+        ~LastLayer() = default;
+    };
 
+    template<typename T>
+    class LastLayer<T, SoftMax<T>>: public BaseLayer<T>
+    {
+        public:
+        LastLayer(int num_of_neurons);
+
+        std::vector<T> get_output();
+        void backpropagate_error(BaseLayer<T> &previous_layer);
+
+        ~LastLayer() = default;
+    };
+
+    template<typename T>
+    class LastLayer<T, SameOutput<T>>: public BaseLayer<T>
+    {
+        public:
+        LastLayer(int num_of_neurons);
+
+        std::vector<T> get_output();
+        void backpropagate_error(BaseLayer<T> &previous_layer);
+
+        ~LastLayer() = default;
+    };
 
 //-----------------------------------------Model-----------------------------------
 

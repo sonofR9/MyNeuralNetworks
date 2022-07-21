@@ -135,7 +135,8 @@ namespace MyNN
         for (int i{0}; i<get_size_of_layer(); ++i)
         {
             response = neurons[i]->get_response();
-            for (size_t j{0}; j<weights_out.size(); ++j)
+            size_t j{0};
+            while (j<weights_out.size() && weights_out[i][j].first!=-1)
             {
                 next_layer.change_neuron_input(weights_out[i][j].first,
                         response*weights_out[i][j].second); 
@@ -206,7 +207,8 @@ namespace MyNN
         for (int i{0}; i<get_size_of_layer(); ++i)
         {
             feedback = neurons[i]->get_feedback();
-            for (size_t j{0}; j<weights_in.size(); ++j)
+            size_t j{0};
+            while (j<weights_in.size() && weights_in[i][j].first!=-1)
             {
                 previous_layer.change_neuron_error(weights_in[i][j].first,
                         feedback*weights_in[i][j].second); 
@@ -223,7 +225,8 @@ namespace MyNN
         for (int i{0}; i<get_size_of_layer(); ++i)
         {
             feedback = neurons[i]->get_feedback();
-            for (size_t j{0}; j<weights_in.size(); ++j)
+            size_t j{0};
+            while (j<weights_in.size() && weights_in[i][j].first!=-1)
             {
                 output_previous = previous_layer.get_ouput(weights_in[i][j].first);
                 weights_in[i][j].second += -output_previous*feedback*learning_rate;
@@ -251,8 +254,8 @@ namespace MyNN
 //------------------------------------SoftMaxDenseLayer-----------------------------
     template <typename T>
     DenseLayer<T, SoftMax<T>>::DenseLayer(int num_of_neurons):
+    BaseLayer(num_of_neurons)
     {
-        BaseLayer::neurons.clear();
         for (int i{0}; i<num_of_neurons; ++i)
         {
             neurons.push_back(new SimpleNeuron<T,SoftMax<T>>);
@@ -292,7 +295,8 @@ namespace MyNN
         for (int i{0}; i<get_size_of_layer(); ++i)
         {
             response = neurons[i]->get_response();
-            for (size_t j{0}; j<weights_out.size(); ++j)
+            size_t j{0};
+            while (j<weights_out.size() && weights_out[i][j].first!=-1)
             {
                 next_layer.change_neuron_input(weights_out[i][j].first,
                         response*weights_out[i][j].second); 
@@ -307,10 +311,12 @@ namespace MyNN
         for (int i{0}; i<get_size_of_layer(); ++i)
         {
             feedback = get_neuron_error(i);
-            for (size_t j{0}; j<weights_in.size(); ++j)
+            size_t j{0};
+            while (j<weights_in.size() && weights_in[i][j].first!=-1)
             {
                 previous_layer.change_neuron_error(weights_in[i][j].first,
                         feedback*weights_in[i][j].second); 
+                ++j;
             }
         }
     }
@@ -324,7 +330,8 @@ namespace MyNN
         for (int i{0}; i<get_size_of_layer(); ++i)
         {
             feedback = get_neuron_error(i);
-            for (size_t j{0}; j<weights_in.size(); ++j)
+            size_t j{0};
+            while (j<weights_in.size() && weights_in[i][j].first!=-1)
             {
                 output_previous = previous_layer.get_ouput(weights_in[i][j].first);
                 weights_in[i][j].second += -output_previous*feedback*learning_rate;
@@ -349,6 +356,88 @@ namespace MyNN
             }
         }
     }
+//------------------------------------LastLayer<Same>---------------------------------
+    template <typename T>
+    LastLayer<T, SameOutput<T>>::LastLayer(int num_of_neurons):
+    BaseLayer(num_of_neurons) 
+    {
+        for (int i{0}; i<num_of_neurons; ++i)
+            neurons.push_back(new SimpleNeuron<T,SameOutput<T>>);
+    };
+
+    template <typename T>
+    std::vector<T> LastLayer<T, SameOutput<T>>::get_output()
+    {
+        std::vector<T> output;
+        for (int i{0}; i<get_size_of_layer(); ++i)
+        {
+            output.push_back(neurons[i]->get_response());
+
+        }
+    }
+
+    template <typename T>
+    void LastLayer<T,SameOutput<T>>::backpropagate_error(BaseLayer<T> &previous_layer)
+    {
+        T feedback;
+        for (int i{0}; i<get_size_of_layer(); ++i)
+        {
+            feedback = neurons[i]->get_feedback();
+            size_t j{0};
+            while (j<weights_in.size() && weights_in[i][j].first!=-1)
+            {
+                previous_layer.change_neuron_error(weights_in[i][j].first,
+                        feedback*weights_in[i][j].second); 
+            }
+        }
+    }
+//-----------------------------------LastLayer<SoftMax>---------------------------------
+    template <typename T>
+    LastLayer<T, SoftMax<T>>::LastLayer(int num_of_neurons):
+    BaseLayer(num_of_neurons) 
+    {
+        for (int i{0}; i<num_of_neurons; ++i)
+            neurons.push_back(new SimpleNeuron<T,SoftMax<T>>);
+    };
+
+    template <typename T>
+    std::vector<T> LastLayer<T, SoftMax<T>>::get_output()
+    {
+        std::vector<T> output;
+        T total_exp_input{0};
+        for (int i{0}; i<get_size_of_layer(); ++i)
+            total_exp_input += neurons[i]->get_exp_input();
+        for (int i{0}; i<get_size_of_layer(); ++i)
+            neurons[i]->set_total_input(sum_of_all_layer_exp_inputs);
+        for (int i{0}; i<get_size_of_layer(); ++i)
+            output.push_back(neurons[i]->get_response());
+    }
+
+    template <typename T>
+    void LastLayer<T,SoftMax<T>>::backpropagate_error(BaseLayer<T> &previous_layer)
+    {
+        T feedback;
+        for (int i{0}; i<get_size_of_layer(); ++i)
+        {
+            T output_num = neurons[i]->get_response();
+            MyNN::SoftMax<T> soft_max;
+            T feedback {0};
+            bool same;
+            for (int z{0}; z<get_size_of_layer(); ++z)
+            {
+                T output_i = neurons[z]->get_response();
+                same = (z==i);
+                feedback+=soft_max.calculate_feedback(output_num, output_i, same);
+            }
+            size_t j{0};
+            while (j<weights_in.size() && weights_in[i][j].first!=-1)
+            {
+                previous_layer.change_neuron_error(weights_in[i][j].first,
+                        feedback*weights_in[i][j].second); 
+                ++j;
+            }
+        }
+    }
 //---------------------------------------------------------------------------------
 //-----------------------------------------Model-----------------------------------
 //---------------------------------------------------------------------------------
@@ -366,6 +455,18 @@ namespace MyNN
     T ReLu<T>::calculate_feedback (T input)
     {
         return (input<=0 ? 0: 1);
+    }
+
+    template<typename T>
+    T SameOutput<T>::calculate (T input)
+    {
+        return (input);
+    }
+
+    template<typename T>
+    T SameOutput<T>::calculate_feedback (T input)
+    {
+        return (input);
     }
 
     template<typename T>
