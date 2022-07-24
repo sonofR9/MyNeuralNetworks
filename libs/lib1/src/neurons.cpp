@@ -35,6 +35,7 @@ namespace MyNN
     template <typename T>
     BaseNeuron<T>::BaseNeuron(): error(0), input(0) {};
 
+
 //------------------------------SimpleNeuron---------------------------------
 
     template <typename T, class activation>
@@ -127,7 +128,6 @@ namespace MyNN
         }
     }
 
-    
     template <typename T>
     void BaseLayer<T>::propagate_signal(BaseLayer<T> &next_layer)
     {
@@ -145,7 +145,7 @@ namespace MyNN
     }
 
     template <typename T>
-    std::vector<T> BaseLayer<T>::get_ouput()
+    std::vector<T> BaseLayer<T>::get_output()
     {
         std::vector<T> output;
         for (int i{0}; i<get_size_of_layer(); ++i)
@@ -241,7 +241,7 @@ namespace MyNN
         T* buff;
         for (int i{0}; i<get_size_of_layer(); ++i)
         {
-            weights_out[i][0].first = neuron_from;
+            weights_out[i][0].first = 0;
             weights_out[i][0].second = new int(0);
             for (int j{1}; j<size_of_next_layer; ++j)
             {
@@ -346,7 +346,7 @@ namespace MyNN
         T* buff;
         for (int i{0}; i<get_size_of_layer(); ++i)
         {
-            weights_out[i][0].first = neuron_from;
+            weights_out[i][0].first = 0;
             weights_out[i][0].second = new int(0);
             for (int j{1}; j<size_of_next_layer; ++j)
             {
@@ -355,6 +355,54 @@ namespace MyNN
                 weights_out[i].push_back(std::pair<int, T*>{j, buff});
             }
         }
+    }
+//--------------------------------------FirstLayer------------------------------------
+    template<typename T>
+    FirstLayer<T>::FirstLayer(int input_size): 
+        BaseLayer(input_size) 
+    {
+        for (int i{0}; i<input_size; ++i)
+            neurons.push_back(new SimpleNeuron<T,BaseActivation<T>>);
+    }
+
+    template<typename T>
+    void FirstLayer<T>::set_input(std::vector<T>& input)
+    {
+        nullify_neurons();
+        for (int i{0}; i<get_size_of_layer; ++i)
+            change_neuron_input(i, input[i]);
+    }
+
+    template <typename T>
+    void FirstLayer<T>::add_weights_out(BaseLayer<T> &next_layer, int size_of_next_layer)
+    {
+        for (int i{0}; i<get_size_of_layer(); ++i)
+        {
+            weights_out[i][0].first = i;
+            weights_out[i][0].second = new int(0);
+            next_layer.add_weight_in(i, i, buff);
+        }
+    }
+//---------------------------------------LastLayer------------------------------------
+    template<typename T>
+    void LastLayerBase<T>::set_errors(std::vector<T>& errors)
+    {
+        for (int i{0}; i<get_size_of_layer(); ++i)
+            neurons[i]->change_error(errors[i]);
+    }
+    
+    template<typename T>
+    std::vector<T> LastLayerBase<T>::get_output()
+    {
+        std::vector<T> empty; 
+        return empty;
+    }
+
+    template<typename T, class activation>
+    std::vector<T> LastLayer<T, activation>::get_output()
+    {
+        std::vector<T> empty; 
+        return empty;
     }
 //------------------------------------LastLayer<Same>---------------------------------
     template <typename T>
@@ -441,7 +489,67 @@ namespace MyNN
 //---------------------------------------------------------------------------------
 //-----------------------------------------Model-----------------------------------
 //---------------------------------------------------------------------------------
+    template<typename T, class losse>
+    Model<T, losse>::Model(int input_size_):input_size{input_size_}, output_size{0},
+        num_of_layers{1} 
+    {
+        first_layer = new FirstLayer(input_size_);
+        layers.push_back(first_layer);
+    }
 
+    template<typename T, class losse>
+    template<class layer>
+    void Model<T, losse>::add_layer(int num_of_neurons)
+    {
+        layers.push_back(new layer(num_of_neurons));
+        layers[num_of_layers-1]->add_weights_out(*(layers[num_of_layers]), num_of_neurons);
+        num_of_layers++;
+    }
+
+    template<typename T, class losse>
+    template<class layer>
+    void Model<T, losse>::add_layer(int num_of_neurons)
+    {
+        last_layer = new layer(num_of_neurons);
+        layers.push_back(last_layer);
+        layers[num_of_layers-1]->add_weights_out(*(layers[num_of_layers]), num_of_neurons);
+        num_of_layers++;
+    }
+
+    template<typename T, class losse>
+    void Model<T, losse>::backpropagate(std::vector<T> &expected_outputs)
+    {
+        losse losse_obj;
+        std::vector<T> errors = 
+            losse_obj.backpropagate_errors(last_layer->get_output(), expected_outputs);
+        last_layer->set_errors(errors);   
+        for (int i{layers.size()-1; i>1; --i)
+        {
+            layers[i]->backpropagate_error(*layers[i-1]);
+            layers[i]->update_weights(*layers[i-1], learning_rate);
+        }
+    }
+
+    template<typename T, class losse>
+    std::vector<T> Model<T,losse>::get_output(std::vector<T>& input)
+    {
+        std::vector<T> output;
+        first_layer->set_input(input);
+        for (int i{0}; y<layers.size()-1; ++i)
+        {
+            layers[i]->propagate_signal(*layers[i+1]);
+        }
+        output = last_layer->get_ouput();
+        return output;
+    }
+
+    template<typename T, class losse>
+    Model<T, losse>::~Model()
+    {
+        for (int i{0}; i<num_of_layers; ++i)
+            delete layers[i];
+        layers.clear();        
+    }
 //---------------------------------------------------------------------------------
 //--------------------------------------Activations--------------------------------
 //---------------------------------------------------------------------------------
@@ -470,13 +578,13 @@ namespace MyNN
     }
 
     template<typename T>
-    T sigmoid<T>::calculate (T input)
+    T Sigmoid<T>::calculate (T input)
     {
         return (1/(1+std::exp(-input)));
     }
 
     template<typename T>
-    T sigmoid<T>::calculate_feedback (T input)
+    T Sigmoid<T>::calculate_feedback (T input)
     {
         return (calculate(input)*(1-calculate(input)));
     }
@@ -494,8 +602,7 @@ namespace MyNN
     }
 
     template<typename T>
-    T SoftMax<T>::calculate_feedback 
-        (T output1, T output2, bool same)
+    T SoftMax<T>::calculate_feedback (T output1, T output2, bool same)
     {
         if (same)
         {
@@ -505,5 +612,31 @@ namespace MyNN
         {
             return (output1*(-output2));
         }
+    }
+
+//---------------------------------------------------------------------------------
+//----------------------------------------Losses-----------------------------------
+//---------------------------------------------------------------------------------
+    template <typename T>
+    std::vector<T> MeanSquarredError<T>::backpropagate_errors(std::vector<T> &outputs, 
+                                                    std::vector<T> &expected_outputs)
+    {
+        std::vector<T> errors_derivatives;
+        for (int i{0}; i<outputs.size(); ++i)
+            errors_derivatives.push_back(2*(outputs[i]-expected_outputs[i]));
+        return errors_derivatives;
+    }
+
+    template <typename T>
+    std::vector<T> MeanSquarredError<T>::get_errors(std::vector<T> &outputs, 
+                                                std::vector<T> &expected_outputs)
+    {
+        std::vector<T> errors;
+        for (int i{0}; i<outputs.size(); ++i)
+        {
+            errors.push_back(outputs[i]-expected_outputs[i]);
+            errors[i]*=errors[i];
+        }
+        return errors;
     }
 }
