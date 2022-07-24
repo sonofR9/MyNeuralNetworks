@@ -520,10 +520,9 @@ namespace MyNN
     void Model<T, losse>::backpropagate(std::vector<T> &expected_outputs)
     {
         losse losse_obj;
-        std::vector<T> errors = 
-            losse_obj.backpropagate_errors(last_layer->get_output(), expected_outputs);
+        std::vector<T> errors = losse_obj.backpropagate_errors(last_layer->get_output(), expected_outputs);
         last_layer->set_errors(errors);   
-        for (int i{layers.size()-1; i>1; --i)
+        for (int i{layers.size()-1}; i>1; --i)
         {
             layers[i]->backpropagate_error(*layers[i-1]);
             layers[i]->update_weights(*layers[i-1], learning_rate);
