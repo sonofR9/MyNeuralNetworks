@@ -6,12 +6,10 @@ project(MyNeuralNetwork)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-add_executable($(PROJECT_NAME) src/main.cpp)
+add_subdirectory(libs build/libs)
 
-add_subdirectory(libs src)
+add_executable($(PROJECT_NAME) main.cpp)
 
-target_include_directories($(PROJECT_NAME) PUBLIC 
+set (INCLUDE_MyNN libs/MyNN/include)
 
-target_link_directories($(PROJECT_NAME) 
-
-target_link_libraries($(PROJECT_NAME)
+target_link_libraries($(PROJECT_NAME) PUBLIC MyNNLib)
