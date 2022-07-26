@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_subdirectory(libs build/libs)
 
-add_executable($(PROJECT_NAME) main.cpp)
+add_executable($(PROJECT_NAME) src/main.cpp)
 
 set (INCLUDE_MyNN libs/MyNN/include)
 
