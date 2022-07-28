@@ -1,6 +1,13 @@
-file (GLOB_RECURSE SRC_FILES_MyNN libs/MyNN/src/*.cpp)
-set (INCLUDE_MyNN libs/lib1/include)
+#file (GLOB SRC_FILES_MyNN src/*.cpp)
+set (INCLUDE_MyNN include)
+file (GLOB HEADERS_MyNN include/*.hpp)
 
-add_library(MyNNLib STATIC $(SRC_FILES_MyNN))
+add_library(MyNNLib INTERFACE)
 
-target_include_directories($(PROJECT_NAME) PUBLIC $(INCLUDE_MyNN))
+# target_sources(MyNNLib INTERFACE
+#     FILE_SET HEADERS
+#     BASE_DIRS include
+#     FILES ${HEADERS_MyNN}
+# )
+
+target_include_directories(MyNNLib INTERFACE ${INCLUDE_MyNN})
